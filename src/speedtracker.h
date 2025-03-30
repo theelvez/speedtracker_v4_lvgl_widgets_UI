@@ -45,8 +45,6 @@
 //
 //////////////////////////////////////
 #include <SD.h>
-#include <XPowersLibInterface.hpp>
-#include <SparkFun_u-blox_GNSS_v3.h>
 
 
 //////////////////////////////////////
@@ -54,8 +52,11 @@
 // Project includes
 //
 //////////////////////////////////////
-#include "config.h"
+//#include "config.h"
+#include "mcu.h"
 #include "display.h"
+#include "gps.h"
+#include "battery.h"
 
 
 //////////////////////////////////////
@@ -74,5 +75,10 @@ extern LilyGo_AMOLED amoled;
 // I2C pin definitions
 #define I2C_SDA_PIN                         				            3
 #define I2C_SCL_PIN                         				            2
+
+
+// Global variables
+extern bool dispSplashScreenDisplayed;
+extern lv_obj_t *mcuVoltageLabel;
 
 #endif // SPEEDTRACKER_H
