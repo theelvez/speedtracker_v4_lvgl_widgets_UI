@@ -268,7 +268,7 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
  *-----------*/
 
 /*1: Show CPU usage and FPS count*/
-#define LV_USE_PERF_MONITOR 0
+#define LV_USE_PERF_MONITOR 1
 #if LV_USE_PERF_MONITOR
 #define LV_USE_PERF_MONITOR_POS LV_ALIGN_BOTTOM_RIGHT
 #endif
@@ -358,7 +358,7 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
 #define LV_FONT_MONTSERRAT_18 0
 #define LV_FONT_MONTSERRAT_20 0
 #define LV_FONT_MONTSERRAT_22 0
-#define LV_FONT_MONTSERRAT_24 0
+#define LV_FONT_MONTSERRAT_24 1
 #define LV_FONT_MONTSERRAT_26 0
 #define LV_FONT_MONTSERRAT_28 0
 #define LV_FONT_MONTSERRAT_30 0
@@ -393,8 +393,6 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
                                         LV_FONT_DECLARE(AmericanCaptain240) \
                                         LV_FONT_DECLARE(AmericanCaptain260) \
                                         LV_FONT_DECLARE(AmericanCaptain280) \
-
-
 
 /*Always set a default font*/
 #define LV_FONT_DEFAULT &lv_font_montserrat_16
@@ -585,10 +583,10 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
 #endif /*LV_USE_THEME_DEFAULT*/
 
 /*A very simple theme that is a good starting point for a custom theme*/
-#define LV_USE_THEME_BASIC 1
+#define LV_USE_THEME_BASIC 0
 
 /*A theme designed for monochrome displays*/
-#define LV_USE_THEME_MONO 1
+#define LV_USE_THEME_MONO 0
 
 /*-----------
  * Layouts
@@ -641,14 +639,14 @@ e.g. "stm32f769xx.h" or "stm32f429xx.h"*/
 #define LV_USE_PNG 1
 
 /*BMP decoder library*/
-#define LV_USE_BMP 1
+#define LV_USE_BMP 0
 
 /* JPG + split JPG decoder library.
  * Split JPG is a custom format optimized for embedded systems. */
-#define LV_USE_SJPG 1
+#define LV_USE_SJPG 0
 
 /*GIF decoder library*/
-#define LV_USE_GIF 1
+#define LV_USE_GIF 0
 
 /*QR code library*/
 #define LV_USE_QRCODE 0

@@ -6,56 +6,29 @@
 
 LilyGo_AMOLED amoled;
 
+INITIALIZATION_DATA initializationData = {0};
 
-/**
- * @brief Function checks if a number is bounded by two other numbers
- * 
- * @param value The value to check
- * @param boundingValue1 The first bounding value
- * @param boundingValue2 The second bounding value
- * 
- * @return true if the value is bounded by the provided bounds
- * @return false if the value is not bounded by the provided bounds
- * 
-*/
-bool utilIsBoundedBy(int value, int boundingValue1, int boundingValue2) {
+DEVICE_DATA deviceData = {
+  .deviceInitialized = false,
+  .deviceProvisioned = false,
+  .runDataFileName = "/st_run_data.txt",
+  .configDataFileName = "/st_config_data.txt"
+};
 
-  //
-  // Get the lower and upper bounds
-  //
-
-  int lowerBound = min(boundingValue1, boundingValue2);
-  int upperBound = max(boundingValue1, boundingValue2);
+// Reference to the global SD card object
+fs::SDFS* sdCardPointer;
 
 
-  //
-  // Check if the value is bounded by the provided bounds
-  //
+const uint64_t sleepDurationMs = 28800000;
 
-  if ((value >= lowerBound) && (value <= upperBound)) {
-    return true;
-  }
+bool g_shutdown = false;
 
-  return false;
-}
 
-int orientation(GPS_COORDINATE p, GPS_COORDINATE q, GPS_COORDINATE r) {
-    double val = (q.longitude - p.longitude) * (r.latitude - p.latitude) - (q.latitude - p.latitude) * (r.longitude - p.longitude);
-    if (val == 0) return 0;  // Collinear
-    return (val > 0) ? 1 : 2;  // Clockwise or Counterclockwise
-}
+void IRAM_ATTR ISR_BootButton() {
 
-bool doIntersect(GPS_COORDINATE p1, GPS_COORDINATE q1, GPS_COORDINATE p2, GPS_COORDINATE q2) {
-    int o1 = orientation(p1, q1, p2);
-    int o2 = orientation(p1, q1, q2);
-    int o3 = orientation(p2, q2, p1);
-    int o4 = orientation(p2, q2, q1);
+  g_shutdown = true;
 
-    if (o1 != o2 && o3 != o4)
-        return true;
-
-    return false;
-}
+} 
 
 
 /**
@@ -78,9 +51,7 @@ void setup() {
   Serial.begin(115200);
   delay(100);
 
-  Serial.println("****Serial device ready.****");
-
-
+  
   //
   // Initialize the I2C bus
   //
@@ -89,37 +60,97 @@ void setup() {
 
   if (Wire.begin(I2C_SDA_PIN,
                  I2C_SCL_PIN)) {
+
     Serial.println("****I2C bus initialized.****");
+
+
+    //
+    // Set the I2C bus init flag to true
+    //
+
+    initializationData.i2cBusInitialized = true;
+
   } else {
     Serial.println("####Failed to initialize the I2C bus.####");
     errorCount++;
   }
 
 
+
   //
-  // Initialize the display and the display subsystem
+  // Initialize the AMOLED display
   //
 
-  Serial.println("****Initializing the display.****");
+  Serial.println("****Initializing the AMOLED display.****");
 
-  if (!dispInitialize()) {
-    Serial.println("####Failed to initialize the display.####");
+  if (!amoled.begin()) {
+    Serial.println("####Failed to initialize the AMOLED display.####\n");
     errorCount++;
+
+
+    //
+    // Freeze the processor in a loop to indicate that the AMOLED display initialization failed
+    //
+
+    while (true)
+    {
+      delay(1000);
+    }
   } else {
-    Serial.println("****Initialized the display.****");
+    Serial.println("****Initialized the AMOLED display.****");
+
+
+    // Set the charging target voltage, Range:3840 ~ 4608mV ,step:16 mV
+    amoled.BQ.setChargeTargetVoltage(4208);
+
+    // Set the precharge current , Range: 64mA ~ 1024mA ,step:64mA
+    amoled.BQ.setPrechargeCurr(64);
+
+    // Set the charging current , Range:0~5056mA ,step:64mA
+    amoled.BQ.setChargerConstantCurr(832);
+
+    // Turn on charging function
+    amoled.BQ.enableCharge();
+
+    //
+    // Set the AMOLED display brightness "mid" brightness
+    //
+
+    amoled.setBrightness(120);
+
+    //
+    // Set pin 
+    //
+
+    pinMode(GPIO_NUM_0, INPUT);
+    attachInterrupt(digitalPinToInterrupt(GPIO_NUM_0), ISR_BootButton, RISING);
+
+
+    //
+    // Initialize the LVGL graphics sub-system and helper functions
+    //
+
+    beginLvglHelper(amoled,
+                    true);
+
+    delay(250);
+    
+
+    //
+    // Set the LVGL initialized flag to true
+    //
+
+    initializationData.lvglInitialized = true;
+
+    Serial.println("****Initialized the LVGL graphics sub-system.****");
+
+
+    //
+    // Set the amoled initialized flag to true
+    //
+
+    initializationData.amoledInitialized = true;
   }
-
-
-  // //
-  // // Initialize the battery subsystem
-  // //
-
-  // if (!batteryInitialize()) {
-  //   Serial.println("####Failed to initialize the battery subsystem.####");
-  //   errorCount++;
-  // } else {
-  //   Serial.println("****Initialized the battery subsystem.****");
-  // }
 
 
   //
@@ -153,36 +184,60 @@ void setup() {
 
 
     //
-    // Dump the contents of the SD card to the serial port
+    // Set the SD card initialized flag to true
     //
 
-    Serial.println("****Dumping the contents of the SD card.****");
+    sdCardPointer = &SD;
+    initializationData.sdCardInitialized = true;
 
-    File root = SD.open("/");
+    
+      //
+      // Dump all the files on the SD card to the serial port
+      //
+      Serial.println("****Dumping all files on the SD card.****");
+      File root = sdCardPointer->open("/");
+      File file = root.openNextFile();  
 
-    while (true) {
-      File entry = root.openNextFile();
+      while (file) {
+        Serial.printf("File: %s, Size: %d bytes\n",
+                      file.name(),
+                      file.size());
 
-      if (!entry) {
-        break;
+
+        file.print("File: ");
+        file.print(file.name());
+        file.print(", Size: "); 
+        file.print(file.size());
+        file.println(" bytes");
+        
+
+        file = root.openNextFile();
       }
 
-      Serial.printf("%s:\n",
-                    entry.name());
 
-      Serial.println("\n----------------------------------------------");
+      //
+      // Close the root directory
+      //
 
-      while (entry.available()) {
-        Serial.write(entry.read());
-      }
+      root.close();
 
 
-      Serial.printf("\n----------------------------------------------\n");
+    //
+    // Check if the required files are present on the SD card
+    //
 
-      entry.close();
+    if (sdCardPointer->exists(deviceData.runDataFileName.c_str()) &&
+        sdCardPointer->exists(deviceData.configDataFileName.c_str())) {
+    } else {
+      Serial.println("####Required files are missing on the SD card.####\n");
+
+
+      //
+      // Missing files, go into provisioning mode
+      //
+
+      dispInitialize_PROVISION(false);
     }
-
-    root.close();
   }
 
   
@@ -202,6 +257,21 @@ void setup() {
                              String(mcuData.mac_address[5], HEX);
 
 
+
+  //
+  // Initialize the display and the display subsystem
+  //
+
+  Serial.println("****Initializing the MAIN display.****");
+
+  if (!dispInitialize_MAIN()) {
+    Serial.println("####Failed to initialize the MAIN display.####");
+    errorCount++;
+  } else {
+    Serial.println("****Initialized the MAIN display.****");
+  }
+
+
   //
   // Initialize the GPS module
   //
@@ -213,6 +283,13 @@ void setup() {
     errorCount++;
   } else {
     Serial.println("****Initialized the GPS module.****");
+
+
+    //
+    // Set the GPS module initialized flag to true
+    //
+
+    initializationData.gpsInitialized = true;
   }
 
 
@@ -243,7 +320,15 @@ void setup() {
     Serial.printf("####There were %d errors during initialization, freezing processor.####\n", errorCount);
   } else {
     Serial.println("****Device is ready.****");
+
+
+    //
+    // Set the device initialized flag to true
+    //
+
+    deviceData.deviceInitialized = true;
   }
+
 
   return;
 }
@@ -267,6 +352,20 @@ void setup() {
  *  
  */
 void loop() {
+
+  //
+  // Check if the shutdown button has been pressed
+  //
+
+  if (g_shutdown) {
+
+    //
+    // Shutdown the device
+    //
+
+    esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_OFF);
+    esp_deep_sleep_start();
+  }
 
   //
   // If the screen has not been cleared yet, clear the screen

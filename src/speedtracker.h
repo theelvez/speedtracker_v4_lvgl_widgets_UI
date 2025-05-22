@@ -52,33 +52,62 @@
 // Project includes
 //
 //////////////////////////////////////
-//#include "config.h"
-#include "mcu.h"
-#include "display.h"
 #include "gps.h"
+#include "display.h"
+#include "display_PROVISION.h"
+#include "display_MAIN.h"
 #include "battery.h"
+#include "mcu.h"
 
 
-//////////////////////////////////////
+///////////////////////////////////////
 //
-// Global variables
+// Generic defines
 //
-//////////////////////////////////////
-extern LilyGo_AMOLED amoled;
-
-
-// Generic definitions				            
+///////////////////////////////////////
 #define FALSE                               				            0
 #define TRUE                                				            1
 
 
-// I2C pin definitions
-#define I2C_SDA_PIN                         				            3
-#define I2C_SCL_PIN                         				            2
+/////////////////////////////////////////
+//
+// Typedefs
+//
+/////////////////////////////////////////
+
+typedef struct _INITIALIZATION_DATA {
+  bool i2cBusInitialized;
+  bool amoledInitialized;
+  bool lvglInitialized;
+  bool sdCardInitialized;
+  bool bleInitialized;
+  bool wifiInitialized;
+  bool gpsInitialized;
+  bool displayInitialized;
+  bool batteryInitialized;
+  bool mcuInitialized;
+}INITIALIZATION_DATA, *PINITIALIZATION_DATA;
 
 
-// Global variables
+typedef struct _DEVICE_DATA {
+  bool deviceInitialized;
+  bool deviceProvisioned;
+  String runDataFileName;
+  String configDataFileName;
+}DEVICE_DATA, *PDEVICE_DATA;
+
+//////////////////////////////////////
+//
+// External global variables
+//
+//////////////////////////////////////
+extern LilyGo_AMOLED amoled;
 extern bool dispSplashScreenDisplayed;
 extern lv_obj_t *mcuVoltageLabel;
+extern MCU_DATA mcuData;
+extern bool isProvisioning;
+extern INITIALIZATION_DATA initializationData;
+extern DEVICE_DATA deviceData;
+extern fs::SDFS* sdCardPointer;
 
-#endif // SPEEDTRACKER_H
+#endif // SPEEDTRACKER_H  

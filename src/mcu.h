@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef MCU_H
 #define MCU_H
 
@@ -27,12 +29,12 @@ typedef struct _MCU_DATA {
 #define TICK_DELAY_MULTIPLIER               				                    1
 
 
+// I2C bus definitions
+#define I2C_SDA_PIN                         				                    3
+#define I2C_SCL_PIN                         				                    2
+
+
 // Function prototypes
 void mcuInitialize();
-
-
-// Global variables
-extern LilyGo_AMOLED amoled;
-extern MCU_DATA mcuData;
 
 #endif // MCU_H

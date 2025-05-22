@@ -2,7 +2,7 @@
 #define GPS_H
 
 // Required for the SparkFun u-blox library using serial communication
-#include <SoftwareSerial.h>
+//#include <SoftwareSerial.h>
 #include <SparkFun_u-blox_GNSS_v3.h>
 
 
@@ -90,3 +90,4 @@ extern lv_obj_t *gpsUTCTimeLabel;
 extern GPS_DATA gpsDisplayData;
 
 #endif // GPS_H
+

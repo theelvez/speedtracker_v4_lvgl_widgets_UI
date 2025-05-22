@@ -4,6 +4,16 @@
 // GPS display data
 GPS_DATA gpsDisplayData;
 
+// UBLOX GNSS object
+SFE_UBLOX_GNSS_SERIAL gps;
+
+// GPS hardware serial port 
+#define gpsSerial Serial2
+
+// Define the task handle for the GPS time resolved task
+TaskHandle_t gpsUTCTimeResolvedTask = NULL;
+
+
 GPS_COORDINATE gpsSafewayFinishLineVertices[4] = {
   {47.54162, -122.04685}, //GPS_FINISH_LINE_RIGHT_ENTER,
   {47.54196, -122.04687}, //GPS_FINISH_LINE_RIGHT_EXIT,
@@ -31,18 +41,6 @@ const GPS_BOUNDING_BOX gpsBoundingBoxes[] =
     sizeof(gpsExit13FinishLineVertices) / sizeof(gpsExit13FinishLineVertices[0])
   }
 };
-  
-
-// GPS interface
-SFE_UBLOX_GNSS_SERIAL gps;
-SoftwareSerial gpsSerial(RX, TX);
-
-
-//
-// Define the task handle for the GPS time resolved task
-//
-
-TaskHandle_t gpsUTCTimeResolvedTask = NULL;
 
 
 /**
@@ -134,7 +132,10 @@ bool gpsInitialize() {
   // Initialize the GPS serial port
   //
 
-  gpsSerial.begin(115200);
+  gpsSerial.begin(115200,
+                  SERIAL_8N1,
+                  RX,
+                  TX);
 
 
   //
@@ -164,11 +165,8 @@ bool gpsInitialize() {
   // Create a new run data file. Name it with the current date and time as such: "gps_run_data_YYYYMMDD_HHMMSS.txt"
   //
 
-  char gpsRunDataFileName[] = "/gps_run_data.txt\0";
-
-
-  gpsDisplayData.gpsRunDataFile = SD.open(gpsRunDataFileName,
-                                          FILE_APPEND);
+  gpsDisplayData.gpsRunDataFile = sdCardPointer->open(deviceData.runDataFileName.c_str(),
+                                                      FILE_APPEND);
 
   
   //                                          
@@ -177,12 +175,12 @@ bool gpsInitialize() {
   
   if (!gpsDisplayData.gpsRunDataFile) {
     Serial.printf("####Failed to open file %s.####\n",
-                  gpsRunDataFileName);
+                  deviceData.runDataFileName.c_str());
 
     return false;
   } else {
     Serial.printf("****Opened file %s.****\n",
-                  gpsRunDataFileName);
+                  deviceData.runDataFileName.c_str());
 
 
     //
@@ -204,11 +202,12 @@ bool gpsInitialize() {
   // Open the GPS config data file for reading
   //
 
-  gpsDisplayData.gpsConfigDataFile = SD.open("/gps_config_data.txt",
-                                             FILE_READ);
+  gpsDisplayData.gpsConfigDataFile = sdCardPointer->open(deviceData.configDataFileName.c_str(),
+                                                         FILE_READ);
 
   if (!gpsDisplayData.gpsConfigDataFile) {
-    Serial.println("####Failed to open gps_config_data.txt file.####");
+    Serial.printf("####Failed to open %s file.####\n",
+                  deviceData.configDataFileName.c_str());
     
     //
     // Spin forever
@@ -220,7 +219,8 @@ bool gpsInitialize() {
     
     return false;
   } else {
-    Serial.println("****Opened gps_config_data.txt file.****");
+    Serial.printf("****Opened %s file.****\n",
+                  deviceData.configDataFileName.c_str());
 
 
     //
@@ -552,55 +552,56 @@ void gpsUpdateDisplayAndRunInfoData( ) {
   }
   
 
-  // //
-  // // If the speed tracking is active, update the speed and location data in the run data file
-  // //
+  //
+  // If the speed tracking is active, update the speed and location data in the run data file
+  //
 
-  // if (gpsDisplayData.speedtrackingActive == true) {
+  if (gpsDisplayData.speedtrackingActive == true) {
 
-  //   //
-  //   // Check if the run data file is busy
-  //   //
+    //
+    // Check if the run data file is busy
+    //
 
-  //   if (gpsDisplayData.gpsRunDataFileBusy == false) {
+    if (gpsDisplayData.gpsRunDataFileBusy == false) {
 
-  //     //
-  //     // Set the run data file to busy
-  //     //
+      //
+      // Set the run data file to busy
+      //
 
-  //     gpsDisplayData.gpsRunDataFileBusy = true;
-
-
-  //     //
-  //     // Write the current speed and location data to the run data file
-  //     //
-
-  //     gpsDisplayData.gpsRunDataFile.printf("GPS_SPEED @ %02d/%02d/%02d %02d:%02d:%02d: %f mph, %f lat, %f lng\n",
-  //                                          gpsDisplayData.year,
-  //                                          gpsDisplayData.month,
-  //                                          gpsDisplayData.day,
-  //                                          gpsDisplayData.hour,
-  //                                          gpsDisplayData.minute,
-  //                                          gpsDisplayData.second,
-  //                                          gpsDisplayData.speedMph,
-  //                                          gpsDisplayData.currentLatitude,
-  //                                          gpsDisplayData.currentLongitude);
+      gpsDisplayData.gpsRunDataFileBusy = true;
 
 
-  //     //
-  //     // Flush the run data file to the SD card
-  //     //
+      //
+      // Write the current speed and location data to the run data file
+      //
 
-  //     gpsDisplayData.gpsRunDataFile.flush();
+      gpsDisplayData.gpsRunDataFile.printf("GPS_SPEED @ %02d/%02d/%02d %02d:%02d:%02d: %03d mph, %f lat, %f lng, SIV:%02d\n",
+                                           gpsDisplayData.year,
+                                           gpsDisplayData.month,
+                                           gpsDisplayData.day,
+                                           gpsDisplayData.hour,
+                                           gpsDisplayData.minute,
+                                           gpsDisplayData.second,
+                                           gpsDisplayData.speedMph,
+                                           gpsDisplayData.currentLatitude,
+                                           gpsDisplayData.currentLongitude,
+                                           gpsDisplayData.satellitesInView);
 
 
-  //     //
-  //     // Set the run data file to not busy
-  //     //
+      //
+      // Flush the run data file to the SD card
+      //
 
-  //     gpsDisplayData.gpsRunDataFileBusy = false;
-  //   }
-  // }
+      gpsDisplayData.gpsRunDataFile.flush();
+
+
+      //
+      // Set the run data file to not busy
+      //
+
+      gpsDisplayData.gpsRunDataFileBusy = false;
+    }
+  }
 
 
   return;
